@@ -17,6 +17,10 @@ class CallConversionPayload(BaseModel):
     conversion_datetime: str | None = None
     customer_id: str | None = None
     conversion_action: str | None = None
+    conversion_value: float | None = Field(default=None, description="Monetary value of the conversion. Omitted from the Google Ads request when not provided.")
+    currency_code: str | None = Field(default=None, description="ISO 4217 currency code, e.g. CAD, USD. Omitted from the Google Ads request when not provided.")
+    partial_failure: bool | None = Field(default=None, description="Allow partial success across multiple conversions. Omitted from the Google Ads request when not provided.")
+    validate_only: bool | None = Field(default=None, description="Dry-run mode — validates without importing. Omitted from the Google Ads request when not provided.")
     search_window_days: int = Field(
         default=0,
         ge=0,
@@ -51,6 +55,10 @@ async def phone_conversion(payload: CallConversionPayload) -> JSONResponse:
                 caller_id=p.caller_id,
                 call_start_datetime=p.call_start_datetime,
                 search_window_days=p.search_window_days,
+                conversion_value=p.conversion_value,
+                currency_code=p.currency_code,
+                partial_failure=p.partial_failure,
+                validate_only=p.validate_only,
             )
             return {
                 "success": result.success,
@@ -67,6 +75,10 @@ async def phone_conversion(payload: CallConversionPayload) -> JSONResponse:
                 caller_id=p.caller_id,
                 call_start_datetime=p.call_start_datetime,
                 conversion_datetime=p.conversion_datetime,
+                conversion_value=p.conversion_value,
+                currency_code=p.currency_code,
+                partial_failure=p.partial_failure,
+                validate_only=p.validate_only,
             )
 
     return await handle_conversion(

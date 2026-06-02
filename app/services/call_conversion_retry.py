@@ -116,6 +116,10 @@ async def run_with_retry(
     caller_id: str,
     call_start_datetime: str,
     search_window_days: int,
+    conversion_value: float | None = None,
+    currency_code: str | None = None,
+    partial_failure: bool | None = None,
+    validate_only: bool | None = None,
 ) -> RetryResult:
     base_start = _parse_to_date(call_start_datetime)
     all_attempts: list[dict[str, Any]] = []
@@ -138,6 +142,10 @@ async def run_with_retry(
                 caller_id=caller_id,
                 call_start_datetime=start_str,
                 conversion_datetime=conv_str,
+                conversion_value=conversion_value,
+                currency_code=currency_code,
+                partial_failure=partial_failure,
+                validate_only=validate_only,
             )
             last_response = response
 

@@ -83,23 +83,36 @@ class GoogleAdsClient(BaseClient):
         caller_id: str,
         call_start_datetime: str,
         conversion_datetime: str,
+        conversion_value: float | None = None,
+        currency_code: str | None = None,
+        partial_failure: bool | None = None,
+        validate_only: bool | None = None,
     ) -> dict[str, Any]:
         token = await self._get_access_token()
+
+        conversion: dict[str, Any] = {
+            "callerId": caller_id,
+            "callStartDateTime": call_start_datetime,
+            "conversionDateTime": conversion_datetime,
+            "conversionAction": conversion_action,
+            "consent": {"adPersonalization": "GRANTED", "adUserData": "GRANTED"},
+        }
+        if conversion_value is not None:
+            conversion["conversionValue"] = conversion_value
+        if currency_code is not None:
+            conversion["currencyCode"] = currency_code
+
+        body: dict[str, Any] = {"conversions": [conversion]}
+        if partial_failure is not None:
+            body["partialFailure"] = partial_failure
+        if validate_only is not None:
+            body["validateOnly"] = validate_only
+
         resp = await self._request(
             "POST",
             f"{_ADS_BASE}/customers/{customer_id}:uploadCallConversions",
             headers=self._auth_headers(token),
-            json={
-                "conversions": [{
-                    "callerId": caller_id,
-                    "callStartDateTime": call_start_datetime,
-                    "conversionDateTime": conversion_datetime,
-                    "conversionAction": conversion_action,
-                    "consent": {"adPersonalization": "GRANTED", "adUserData": "GRANTED"},
-                }],
-                "partialFailure": True,
-                "validateOnly": False,
-            },
+            json=body,
         )
         if resp.status_code not in (200, 206):
             raise IntegrationError("google_ads", f"uploadCallConversions failed: {resp.text}", resp.status_code)
