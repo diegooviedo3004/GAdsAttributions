@@ -34,10 +34,12 @@ SKIP TO NEXT START – current start date is invalid; skip all remaining
                             Also fires when conversionDateTime overshoots —
                             stepping the start back also pulls all conversion
                             dates back with it.
+  TOO_RECENT_CALL         – call occurred less than 6 hours ago. Stepping back
+                            1 day always exceeds the 6-hour requirement, so the
+                            next start_offset iteration will clear the error.
 
 TERMINAL – no date change will ever fix these, stop immediately:
   UNPARSEABLE_CALLERS_PHONE_NUMBER – bad phone format, a data problem
-  TOO_RECENT_CALL                  – call is too new, must wait
   EXPIRED_CALL                     – call is outside the conversion action's
                                      lookback window; going further back in
                                      start_offset only makes it worse, so
@@ -55,7 +57,6 @@ log = logging.getLogger("services.call_conversion_retry")
 
 _TERMINAL_ERRORS: frozenset[str] = frozenset({
     "UNPARSEABLE_CALLERS_PHONE_NUMBER",
-    "TOO_RECENT_CALL",
     "EXPIRED_CALL",  # lookback window exceeded – call is simply too old
 })
 
@@ -63,6 +64,7 @@ _TERMINAL_ERRORS: frozenset[str] = frozenset({
 # The start date itself is out of range; moving backwards fixes it.
 _SKIP_TO_NEXT_START_ERRORS: frozenset[str] = frozenset({
     "LATER_THAN_MAXIMUM_DATE",
+    "TOO_RECENT_CALL",  # call < 6 hours old; -1 day always clears the threshold
 })
 
 
