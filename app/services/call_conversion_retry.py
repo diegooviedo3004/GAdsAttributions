@@ -26,10 +26,18 @@ RETRYABLE – changing dates may help, keep going:
                              conv_offset only increases from 0, this resolves
                              itself on the next conv_offset iteration.
 
+SKIP TO NEXT START – current start date is invalid; skip all remaining
+  conv_offset iterations for this start and step back one more day:
+  LATER_THAN_MAXIMUM_DATE – the callStartDateTime is too recent for the API.
+                            Moving start_offset forward by 1 day moves it
+                            earlier, eventually landing within the valid range.
+                            Also fires when conversionDateTime overshoots —
+                            stepping the start back also pulls all conversion
+                            dates back with it.
+
 TERMINAL – no date change will ever fix these, stop immediately:
   UNPARSEABLE_CALLERS_PHONE_NUMBER – bad phone format, a data problem
   TOO_RECENT_CALL                  – call is too new, must wait
-  LATER_THAN_MAXIMUM_DATE          – conversion date is beyond Google's limit
   EXPIRED_CALL                     – call is outside the conversion action's
                                      lookback window; going further back in
                                      start_offset only makes it worse, so
@@ -48,12 +56,14 @@ log = logging.getLogger("services.call_conversion_retry")
 _TERMINAL_ERRORS: frozenset[str] = frozenset({
     "UNPARSEABLE_CALLERS_PHONE_NUMBER",
     "TOO_RECENT_CALL",
-    "LATER_THAN_MAXIMUM_DATE",
     "EXPIRED_CALL",  # lookback window exceeded – call is simply too old
 })
 
-# All other errors (including CALL_NOT_FOUND and CONVERSION_PRECEDES_CALL)
-# are treated as retryable – keep iterating combinations.
+# Skip remaining conv_offsets for this start date and step back one more day.
+# The start date itself is out of range; moving backwards fixes it.
+_SKIP_TO_NEXT_START_ERRORS: frozenset[str] = frozenset({
+    "LATER_THAN_MAXIMUM_DATE",
+})
 
 
 @dataclass
@@ -191,6 +201,13 @@ async def run_with_retry(
                     terminal_error=terminal_code,
                     all_attempts=all_attempts,
                 )
+
+            if error_codes & _SKIP_TO_NEXT_START_ERRORS:
+                log.info(
+                    "start date out of range — stepping back one day",
+                    extra={"attempt": attempt, "call_start_datetime": start_str},
+                )
+                break  # exit conv_offset loop, outer loop steps start back 1 day
 
     log.info(
         "retry exhausted — no successful combination found",
